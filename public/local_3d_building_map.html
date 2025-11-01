@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Buildings — Choose, Place, Move, Rotate, and Resize</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="https://unpkg.com/threebox-plugin@2.2.1/dist/threebox.css" rel="stylesheet" />
+  <style>
+    html,
+    body,
+    #map {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: sans-serif;
+    }
+
+    .sidebar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+      max-width: 150px;
+    }
+
+    .sidebar button {
+      background: #222;
+      color: white;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.2s;
+      user-select: none;
+    }
+
+    .sidebar button:hover,
+    .sidebar button.active {
+      background: #0d6efd;
+    }
+
+    .info {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      z-index: 10;
+      max-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <!-- Sidebar for building types and size controls -->
+  <div class="sidebar" id="buildingMenu">
+    <button data-model="models/House.glb" class="active">🏠 Small Building</button>
+    <button data-model="models/LargeBuilding.glb">🏢 Large Building</button>
+    <button data-model="models/">🏭 Factory</button>
+    <button data-model="models/Tower.glb">🗼 Tower</button>
+    <hr />
+   
+  </div>
+
+  <div class="info">
+    🧱 Select a building → Click on the map to place it.<br />
+    ✋ Drag buildings to move them.<br />
+    🔁 Press <b>R</b> to rotate selected building.<br />
+    ➕ / ➖ keys or buttons to resize selected building.<br />
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/three@0.126.1/build/three.min.js"></script>
+  <script src="https://unpkg.com/threebox-plugin@2.2.1/dist/threebox.min.js"></script>
+
+  <script>
+    // Check WebGL support
+    if (!window.WebGLRenderingContext) {
+      alert("WebGL not supported in your browser.");
+    }
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style: {
+        version: 8,
+        sources: {
+          "osm-tiles": {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: "© OpenStreetMap contributors"
+          }
+        },
+        layers: [
+          {
+            id: "osm-tiles-layer",
+            type: "raster",
+            source: "osm-tiles"
+          }
+        ]
+      },
+      center: [77.5946, 12.9716],
+      zoom: 17,
+      pitch: 60,
+      bearing: -20,
+      antialias: true
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), "top-left");
+
+    let tb;
+    let selectedModel = "models/House.glb"; // Updated to match buttons data-models
+    let selectedBuilding = null;
+
+    map.on("load", () => {
+      tb = new Threebox(map, map.getCanvas().getContext("webgl"), {
+        defaultLights: true,
+        enableSelectingObjects: true,
+        enableDraggingObjects: true,
+        enableRotatingObjects: false,
+      });
+
+      map.addLayer({
+        id: "3d-buildings",
+        type: "custom",
+        renderingMode: "3d",
+        onAdd: function () { },
+        render: function (gl, matrix) {
+          tb.update();
+        },
+      });
+    });
+
+    function addBuilding(coords, modelPath, scale = 1) {
+      tb.loadObj(
+        {
+          type: "gltf",
+          obj: modelPath,
+          scale: scale,
+          rotation: { x: 90, y: 0, z: 0 },
+          anchor: "center",
+        },
+        function (model) {
+          if (!model) {
+            console.error("❌ Failed to load model:", modelPath);
+            return;
+          }
+          model.setCoords(coords);
+          model.set({ altitude: 0 });
+          tb.add(model);
+
+          model.addEventListener("ObjectDragged", (e) => {
+            console.log("🏗️ Building moved to:", e.detail.model.coordinates);
+          });
+
+          model.addEventListener("SelectedChange", (e) => {
+            selectedBuilding = e.detail.selected ? e.detail.model : null;
+          });
+
+          console.log("✅ Added:", modelPath, "at", coords, "scale:", scale);
+        }
+      );
+    }
+
+    map.on("click", (e) => {
+      const coords = [e.lngLat.lng, e.lngLat.lat];
+      const scale = 0.5;
+      addBuilding(coords, selectedModel, scale);
+    });
+
+    document.querySelectorAll("#buildingMenu button[data-model]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#buildingMenu button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedModel = btn.dataset.model;
+        console.log("Selected model changed to:", selectedModel);
+      });
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (!selectedBuilding) return;
+      const scaleStep = 0.1;
+      const scaleVector = selectedBuilding.getObject3D().scale;
+      if (e.key === 'r' || e.key === 'R') {
+        // Rotate building by 15 degrees on Z axis
+        const rot = selectedBuilding.getObject3D().rotation;
+        rot.z += Math.PI / 12;
+        selectedBuilding.setRotation({ x: 90, y: 0, z: THREE.MathUtils.radToDeg(rot.z) });
+      }
+      else if (e.key === '+' || e.key === '=') {
+        // Increase scale by 10%
+        scaleVector.multiplyScalar(1 + scaleStep);
+        selectedBuilding.setScale(scaleVector.x);
+      }
+      else if (e.key === '-' || e.key === '_') {
+        // Decrease scale by 10%
+        scaleVector.multiplyScalar(1 - scaleStep);
+        selectedBuilding.setScale(scaleVector.x);
+      }
+    });
+
+    // Button controls for scale
+    const scaleUpBtn = document.getElementById("scaleUpBtn");
+    const scaleDownBtn = document.getElementById("scaleDownBtn");
+
+    scaleUpBtn.addEventListener("click", () => {
+      if (!selectedBuilding) return;
+      const scaleVector = selectedBuilding.getObject3D().scale;
+      scaleVector.multiplyScalar(1.1);
+      selectedBuilding.setScale(scaleVector.x);
+    });
+
+    scaleDownBtn.addEventListener("click", () => {
+      if (!selectedBuilding) return;
+      const scaleVector = selectedBuilding.getObject3D().scale;
+      scaleVector.multiplyScalar(0.9);
+      selectedBuilding.setScale(scaleVector.x);
+    });
+
+  </script>
+</body>
+
+</html>
