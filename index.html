@@ -30,9 +30,14 @@
 
   <!-- Expose globals that Threebox expects -->
   <script>
-    // Ensure Threebox finds the expected globals
-    window.THREE = window.THREE || THREE;
-    window.mapboxgl = window.mapboxgl || window.maplibregl;
+    window.addEventListener('DOMContentLoaded', function() {
+      if (typeof THREE !== 'undefined') {
+        window.THREE = THREE;
+      }
+      if (typeof maplibregl !== 'undefined') {
+        window.mapboxgl = maplibregl;
+      }
+    });
   </script>
 
   <!-- Load Threebox AFTER THREE and maplibre -->
