@@ -1,13 +1,44 @@
+//index.html
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3D Urban Simulation Dashboard</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- MapLibre CSS -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <!-- Threebox CSS -->
+  <link href="https://unpkg.com/threebox-plugin@2.2.1/dist/threebox.css" rel="stylesheet" />
+  <title>MapLibre Threebox 3D Buildings</title>
+  <style>
+    html, body, #root {
+      height: 100%;
+      margin: 0;
+      background: #111;
+    }
+    /* app uses a full-screen div; keep defaults here */
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Load Three.js first (single instance) -->
+  <script src="https://unpkg.com/three@0.163.0/build/three.min.js"></script>
+
+  <!-- Load MapLibre (maplibre-gl) -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- Expose globals that Threebox expects -->
+  <script>
+    // Ensure Threebox finds the expected globals
+    window.THREE = window.THREE || THREE;
+    window.mapboxgl = window.mapboxgl || window.maplibregl;
+  </script>
+
+  <!-- Load Threebox AFTER THREE and maplibre -->
+  <script src="https://unpkg.com/threebox-plugin@2.2.1/dist/threebox.min.js"></script>
+
+  <!-- Your app bundle (Vite will inject the script here during dev/build) -->
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 </html>

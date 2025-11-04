@@ -123,7 +123,7 @@ const Map3D: React.FC<Map3DProps> = ({
     const loader = new GLTFLoader();
     loader.load(
       "/models/building.glb",
-      (gltf) => {
+      (gltf:any) => {
         const model = gltf.scene;
         model.scale.set(5, 5, 5);
         model.position.set(0, 0, 0);
@@ -132,7 +132,7 @@ const Map3D: React.FC<Map3DProps> = ({
         console.log("✅ GLB model loaded successfully");
       },
       undefined,
-      (error) => console.error("❌ Error loading GLB model:", error)
+      (error:any) => console.error("❌ Error loading GLB model:", error)
     );
 
     // --- Add Renderer Canvas ---
@@ -192,13 +192,6 @@ const Map3D: React.FC<Map3DProps> = ({
         mapRef.current.off("zoom", debouncedMapMove);
         mapRef.current.remove();
         mapRef.current = null;
-      }
-
-      if (drawRef.current) {
-        try {
-          drawRef.current.remove();
-        } catch {}
-        drawRef.current = null;
       }
     };
   }, [center, zoom, pitch, bearing, debouncedMapMove]);
